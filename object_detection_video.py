@@ -2,30 +2,36 @@ import numpy as np
 import cv2
 import datetime
 
-video_cap = cv2.VideoCapture("examples/video1.mp4")
+video_cap = cv2.VideoCapture(1)
 
 # grab the width and the height of the video stream
 frame_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = int(video_cap.get(cv2.CAP_PROP_FPS))
-# initialize the FourCC and a video writer object
+
+'''# initialize the FourCC and a video writer object
 fourcc = cv2.VideoWriter_fourcc(*"XVID")
-writer = cv2.VideoWriter("output.mp4", fourcc, fps, (frame_width, frame_height))
+writer = cv2.VideoWriter("output.mp4", fourcc, fps, (frame_width, frame_height))'''
 
 # path to the weights and model files
-weights = "ssd_mobilenet/frozen_inference_graph.pb"
-model = "ssd_mobilenet/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt"
+weights = "./ssd_mobilenet/frozen_inference_graph.pb"
+model = "./ssd_mobilenet/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt"
+
 # load the MobileNet SSD model trained  on the COCO dataset
 net = cv2.dnn.readNetFromTensorflow(weights, model)
 
 # load the class labels the model was trained on
 class_names = []
-with open("ssd_mobilenet/coco_names.txt", "r") as f:
+with open("./ssd_mobilenet/coco_names.txt", "r") as f:
     class_names = f.read().strip().split("\n")
 
 # create a list of random colors to represent each class
 np.random.seed(42)
-colors = np.random.randint(0, 255, size=(len(class_names), 3))
+colors = np.random.randint(0, 255, size=(len(class_names)+1, 3))
+
+start_time = datetime.datetime.now()
+interval = 10
+labels_record = {}
 
 # loop over the frames
 while True:
@@ -42,6 +48,9 @@ while True:
     net.setInput(blob)
     output = net.forward() # shape: (1, 1, 100, 7)
 
+    elapsed_time = datetime.datetime.now() - start_time
+    recorder = True if int(elapsed_time.total_seconds()) >= interval else False
+
     # loop over the number of detected objects
     for detection in output[0, 0, :, :]: # output[0, 0, :, :] has a shape of: (100, 7)
         # the confidence of the model regarding the detected object
@@ -57,10 +66,19 @@ while True:
         label = class_names[class_id - 1].upper()
         color = colors[class_id]
         B, G, R = int(color[0]), int(color[1]), int(color[2])
+
+        # record object count in a dictionary each minute
+        if recorder:
+            if label in labels_record:
+                labels_record[label] += 1
+            else:
+                labels_record[label] = 1
+
         # perform element-wise multiplication to get
         # the (x, y) coordinates of the bounding box
         box = [int(a * b) for a, b in zip(detection[3:7], [w, h, w, h])]
         box = tuple(box)
+
         # draw the bounding box of the object
         cv2.rectangle(frame, box[:2], box[2:], (B, G, R), thickness=2)
 
@@ -69,19 +87,28 @@ while True:
         cv2.putText(frame, text, (box[0], box[1]),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
+    if recorder:
+        print(labels_record)
+        labels_record = {}
+        start_time = datetime.datetime.now()
+        recorder = False
+
     # end time to compute the fps
     end = datetime.datetime.now()
+
     # calculate the frame per second and draw it on the frame
     fps = f"FPS: {1 / (end - start).total_seconds():.2f}"
     cv2.putText(frame, fps, (50, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 8)
     cv2.imshow("Output", frame)
+
     # write the frame to disk
-    writer.write(frame)
+    #writer.write(frame)
+    
     if cv2.waitKey(10) == ord("q"):
         break
 
 # release the video capture, video writer, and close all windows
 video_cap.release()
-writer.release()
+#writer.release()
 cv2.destroyAllWindows()
