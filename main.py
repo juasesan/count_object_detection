@@ -2,16 +2,20 @@ import numpy as np
 import cv2
 import datetime
 
-video_cap = cv2.VideoCapture(1)
+from send_payload import send_payload
+
+# define the variables to send the data in post request
+endpoint = 'http://localhost:8000'
+interval = 10   # interval of time in seconds to send the data
+labels_record = {}  # dictionary sent as json payload
+
+# set the camera to use
+video_cap = cv2.VideoCapture(0)
 
 # grab the width and the height of the video stream
 frame_width = int(video_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(video_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = int(video_cap.get(cv2.CAP_PROP_FPS))
-
-'''# initialize the FourCC and a video writer object
-fourcc = cv2.VideoWriter_fourcc(*"XVID")
-writer = cv2.VideoWriter("output.mp4", fourcc, fps, (frame_width, frame_height))'''
 
 # path to the weights and model files
 weights = "./ssd_mobilenet/frozen_inference_graph.pb"
@@ -29,14 +33,12 @@ with open("./ssd_mobilenet/coco_names.txt", "r") as f:
 np.random.seed(42)
 colors = np.random.randint(0, 255, size=(len(class_names)+1, 3))
 
+
 start_time = datetime.datetime.now()
-interval = 10
-labels_record = {}
 
 # loop over the frames
 while True:
-    # starter time to computer the fps
-    start = datetime.datetime.now()
+    # take a capture of the video
     success, frame = video_cap.read()
     h = frame.shape[0]
     w = frame.shape[1]
@@ -89,26 +91,16 @@ while True:
 
     if recorder:
         print(labels_record)
+        send_payload(endpoint, labels_record)
         labels_record = {}
         start_time = datetime.datetime.now()
         recorder = False
 
-    # end time to compute the fps
-    end = datetime.datetime.now()
-
-    # calculate the frame per second and draw it on the frame
-    fps = f"FPS: {1 / (end - start).total_seconds():.2f}"
-    cv2.putText(frame, fps, (50, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 8)
     cv2.imshow("Output", frame)
-
-    # write the frame to disk
-    #writer.write(frame)
     
     if cv2.waitKey(10) == ord("q"):
         break
 
 # release the video capture, video writer, and close all windows
 video_cap.release()
-#writer.release()
 cv2.destroyAllWindows()
