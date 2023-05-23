@@ -4,9 +4,10 @@ Multi-object detection project using OpenCV for video capture and bounding box d
 This project is a fork of an original repository, modified to count detections of specific objects.
 
 # Configuration
-On main.py, you can modify the following variables for detection and payload sending:
-
-
+In main.py, you can modify the following variables for detection and payload sending:
+- endpoint: address to your web server
+- interval: time in seconds of when to send the payload
+- labels_record: dictionary (objects to detect and count) sent as json payload
 
 The list of possible objects to detect (COCO classes) can be found in: 
 https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-dataset/
@@ -19,7 +20,9 @@ https://tech.amikelive.com/node-718/what-object-categories-labels-are-in-coco-da
 # Instructions
 Install peoject dependencies detailed in requirements.txt running the following command on your console inside project's folder:
 
+```
 pip install -r requirements.txt
+```
 
 # References
 The original repository belongs to the tutorial: https://dontrepeatyourself.org/post/object-detection-with-python-deep-learning-and-opencv/
