@@ -6,8 +6,14 @@ from send_payload import send_payload
 
 # define the variables to send the data in post request
 endpoint = 'http://localhost:8000'
-interval = 10   # interval of time in seconds to send the data
-labels_record = {}  # dictionary sent as json payload
+interval = 60   # interval of time in seconds to send the data
+# dictionary (objects to detect and count) sent as json payload
+labels_record = {
+    'BANANA': 0,
+    'APPLE': 0,
+    'BOTTLE': 0,
+    'SPOON' : 0
+}  
 
 # set the camera to use
 video_cap = cv2.VideoCapture(0)
@@ -50,6 +56,7 @@ while True:
     net.setInput(blob)
     output = net.forward() # shape: (1, 1, 100, 7)
 
+    # Check whether the interval to record the data was reached
     elapsed_time = datetime.datetime.now() - start_time
     recorder = True if int(elapsed_time.total_seconds()) >= interval else False
 
@@ -70,11 +77,8 @@ while True:
         B, G, R = int(color[0]), int(color[1]), int(color[2])
 
         # record object count in a dictionary each minute
-        if recorder:
-            if label in labels_record:
-                labels_record[label] += 1
-            else:
-                labels_record[label] = 1
+        if recorder and (label in labels_record):
+            labels_record[label] += 1
 
         # perform element-wise multiplication to get
         # the (x, y) coordinates of the bounding box
@@ -90,9 +94,18 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     if recorder:
+        print('Detected objects:')
         print(labels_record)
+        print('Sending payload...')
         send_payload(endpoint, labels_record)
-        labels_record = {}
+
+        # restart variables
+        labels_record = {
+            'BANANA': 0,
+            'APPLE': 0,
+            'BOTTLE': 0,
+            'SPOON' : 0
+        } 
         start_time = datetime.datetime.now()
         recorder = False
 
